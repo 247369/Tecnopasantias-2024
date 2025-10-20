@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+
+{% block title %}Crear Pedido - PLECORMET{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('orders.dashboard') }}">Dashboard</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('orders.list_orders') }}">Pedidos</a></li>
+            <li class="breadcrumb-item active">Nuevo Pedido</li>
+        </ol>
+    </nav>
+    <h1><i class="bi bi-plus-circle"></i> Crear Nuevo Pedido</h1>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Información del Pedido</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('orders.create_order') }}">
+                    <!-- Número de Pedido -->
+                    <div class="mb-3">
+                        <label for="numero_pedido" class="form-label">
+                            Número de Pedido *
+                        </label>
+                        <input type="text" class="form-control" id="numero_pedido" 
+                               name="numero_pedido" required 
+                               placeholder="Ej: PED-2024-005">
+                        <small class="text-muted">Identificador único del pedido</small>
+                    </div>
+
+                    <!-- Cliente -->
+                    <div class="mb-3">
+                        <label for="cliente" class="form-label">
+                            Cliente
+                        </label>
+                        <input type="text" class="form-control" id="cliente" 
+                               name="cliente" 
+                               placeholder="Nombre del cliente o empresa">
+                    </div>
+
+                    <!-- Material -->
+                    <div class="mb-3">
+                        <label for="material_id" class="form-label">
+                            Material *
+                        </label>
+                        <select class="form-select" id="material_id" name="material_id" required>
+                            <option value="">Seleccionar material...</option>
+                            {% for material in materiales %}
+                            <option value="{{ material.id }}">
+                                {{ material.nombre }} - {{ material.tipo }} 
+                                ({{ material.longitud_disponible }}mm) 
+                                - Stock: {{ material.cantidad_stock }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Descripción -->
+                    <div class="mb-3">
+                        <label for="descripcion" class="form-label">
+                            Descripción
+                        </label>
+                        <textarea class="form-control" id="descripcion" name="descripcion" 
+                                  rows="3" placeholder="Detalles del pedido..."></textarea>
+                    </div>
+
+                    <div class="row">
+                        <!-- Prioridad -->
+                        <div class="col-md-6 mb-3">
+                            <label for="prioridad" class="form-label">
+                                Prioridad
+                            </label>
+                            <select class="form-select" id="prioridad" name="prioridad">
+                                <option value="baja">Baja</option>
+                                <option value="normal" selected>Normal</option>
+                                <option value="alta">Alta</option>
+                                <option value="urgente">Urgente</option>
+                            </select>
+                        </div>
+
+                        <!-- Fecha de Entrega -->
+                        <div class="col-md-6 mb-3">
+                            <label for="fecha_entrega" class="form-label">
+                                Fecha de Entrega Estimada
+                            </label>
+                            <input type="date" class="form-control" id="fecha_entrega" 
+                                   name="fecha_entrega">
+                        </div>
+                    </div>
+
+                    <!-- Empleado Asignado -->
+                    <div class="mb-3">
+                        <label for="empleado_id" class="form-label">
+                            Asignar a Empleado
+                        </label>
+                        <select class="form-select" id="empleado_id" name="empleado_id">
+                            <option value="">Sin asignar</option>
+                            {% for empleado in empleados %}
+                            <option value="{{ empleado.id }}">
+                                {{ empleado.nombre_completo or empleado.username }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <small class="text-muted">Opcional: puede asignarse después</small>
+                    </div>
+
+                    <!-- Botones -->
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                        <a href="{{ url_for('orders.list_orders') }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-circle"></i> Cancelar
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-save"></i> Crear Pedido
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Panel de ayuda -->
+    <div class="col-lg-4">
+        <div class="card bg-light">
+            <div class="card-body">
+                <h5 class="card-title">
+                    <i class="bi bi-info-circle"></i> Información
+                </h5>
+                <p class="card-text">
+                    <strong>Pasos siguientes:</strong>
+                </p>
+                <ol class="small">
+                    <li>Crea el pedido con la información básica</li>
+                    <li>Usa el <strong>Optimizador</strong> para calcular el patrón de corte</li>
+                    <li>Los resultados se guardarán automáticamente en el pedido</li>
+                    <li>Asigna el pedido a un empleado si aún no lo hiciste</li>
+                </ol>
+                <hr>
+                <p class="card-text">
+                    <strong>Campos obligatorios (*):</strong>
+                </p>
+                <ul class="small">
+                    <li>Número de Pedido</li>
+                    <li>Material</li>
+                </ul>
+            </div>
+        </div>
+
+        {% if materiales %}
+        <div class="card mt-3">
+            <div class="card-body">
+                <h6 class="card-title">
+                    <i class="bi bi-box-seam"></i> Materiales Disponibles
+                </h6>
+                <div class="list-group list-group-flush">
+                    {% for material in materiales[:5] %}
+                    <div class="list-group-item px-0">
+                        <small>
+                            <strong>{{ material.nombre }}</strong><br>
+                            Stock: {{ material.cantidad_stock }} unidades
+                        </small>
+                    </div>
+                    {% endfor %}
+                </div>
+                <a href="{{ url_for('orders.list_materials') }}" class="btn btn-sm btn-outline-primary mt-2 w-100">
+                    Ver Todos los Materiales
+                </a>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Establecer fecha mínima como hoy
+document.addEventListener('DOMContentLoaded', function() {
+    const fechaInput = document.getElementById('fecha_entrega');
+    const today = new Date().toISOString().split('T')[0];
+    fechaInput.setAttribute('min', today);
+});
+</script>
+{% endblock %}

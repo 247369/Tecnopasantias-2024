@@ -1,0 +1,595 @@
+{% extends "base.html" %}
+
+{% block title %}Optimizador de Cortes - PLECORMET{% endblock %}
+
+{% block extra_css %}
+<style>
+    .pieza-item {
+        background: #f8f9fa;
+        border-left: 4px solid #3498db;
+        margin-bottom: 0.5rem;
+        transition: all 0.3s;
+    }
+    
+    .pieza-item:hover {
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        transform: translateX(5px);
+    }
+    
+    .barra-visualization {
+        height: 60px;
+        background: linear-gradient(to right, #34495e 0%, #2c3e50 100%);
+        border-radius: 8px;
+        position: relative;
+        margin-bottom: 1rem;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+        overflow: hidden;
+    }
+    
+    .pieza-visual {
+        position: absolute;
+        height: 100%;
+        background: linear-gradient(135deg, #3498db, #2980b9);
+        border-right: 2px solid #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 0.75rem;
+        font-weight: bold;
+        transition: all 0.3s;
+    }
+    
+    .pieza-visual:hover {
+        background: linear-gradient(135deg, #5dade2, #3498db);
+        z-index: 10;
+    }
+    
+    .desperdicio-visual {
+        position: absolute;
+        height: 100%;
+        background: repeating-linear-gradient(
+            45deg,
+            #e74c3c,
+            #e74c3c 10px,
+            #c0392b 10px,
+            #c0392b 20px
+        );
+        right: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 0.75rem;
+    }
+    
+    .resultado-card {
+        animation: fadeInUp 0.5s ease-out;
+    }
+    
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    .efficiency-meter {
+        height: 30px;
+        background: #e0e0e0;
+        border-radius: 15px;
+        overflow: hidden;
+        position: relative;
+    }
+    
+    .efficiency-fill {
+        height: 100%;
+        background: linear-gradient(to right, #27ae60, #2ecc71);
+        transition: width 1s ease-out;
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        padding-right: 10px;
+        color: white;
+        font-weight: bold;
+    }
+    
+    .loading-spinner {
+        display: none;
+    }
+    
+    .loading-spinner.active {
+        display: inline-block;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <h1><i class="bi bi-calculator"></i> Optimizador de Cortes</h1>
+    <p class="text-muted">Calcula el patrón de corte más eficiente para minimizar desperdicios</p>
+</div>
+
+<div class="row">
+    <!-- Panel de Entrada -->
+    <div class="col-lg-5">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="bi bi-input-cursor"></i> Datos de Entrada</h5>
+            </div>
+            <div class="card-body">
+                <form id="optimizerForm">
+                    <!-- Selección de Material -->
+                    <div class="mb-3">
+                        <label for="material_id" class="form-label">
+                            <i class="bi bi-box-seam"></i> Material Disponible *
+                        </label>
+                        <select class="form-select" id="material_id" name="material_id" required>
+                            <option value="">Seleccionar material...</option>
+                            {% for material in materiales %}
+                            <option value="{{ material.id }}" 
+                                    data-longitud="{{ material.longitud_disponible }}"
+                                    data-stock="{{ material.cantidad_stock }}">
+                                {{ material.nombre }} - {{ material.tipo }} 
+                                ({{ material.longitud_disponible }}mm) 
+                                - Stock: {{ material.cantidad_stock }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <small class="text-muted">Longitud de barra disponible</small>
+                    </div>
+
+                    <!-- Información del Material Seleccionado -->
+                    <div id="materialInfo" class="alert alert-info d-none mb-3">
+                        <strong>Material seleccionado:</strong>
+                        <div id="materialDetails"></div>
+                    </div>
+
+                    <!-- Margen de Corte -->
+                    <div class="mb-3">
+                        <label for="margen_corte" class="form-label">
+                            <i class="bi bi-arrows-expand"></i> Margen de Corte (mm)
+                        </label>
+                        <input type="number" class="form-control" id="margen_corte" 
+                               value="3" min="0" step="0.5">
+                        <small class="text-muted">Desperdicio por cada corte realizado</small>
+                    </div>
+
+                    <hr>
+
+                    <!-- Piezas Requeridas -->
+                    <div class="mb-3">
+                        <label class="form-label">
+                            <i class="bi bi-rulers"></i> Piezas Requeridas
+                        </label>
+                        
+                        <div class="input-group mb-2">
+                            <input type="number" class="form-control" id="pieza_longitud" 
+                                   placeholder="Longitud (mm)" min="1" step="0.1">
+                            <input type="number" class="form-control" id="pieza_cantidad" 
+                                   placeholder="Cantidad" min="1" value="1">
+                            <button type="button" class="btn btn-success" id="btnAgregarPieza">
+                                <i class="bi bi-plus-lg"></i> Agregar
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Lista de Piezas -->
+                    <div id="listaPiezas" class="mb-3">
+                        <!-- Las piezas se agregarán aquí dinámicamente -->
+                    </div>
+
+                    <!-- Botón de Optimizar -->
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg" id="btnOptimizar">
+                            <i class="bi bi-lightning-charge"></i> Optimizar Corte
+                            <span class="loading-spinner spinner-border spinner-border-sm ms-2" 
+                                  role="status"></span>
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" id="btnLimpiar">
+                            <i class="bi bi-arrow-counterclockwise"></i> Limpiar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Panel de Resultados -->
+    <div class="col-lg-7">
+        <div id="resultadosContainer" class="d-none">
+            <!-- Resumen de Optimización -->
+            <div class="card resultado-card mb-3">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="bi bi-check-circle"></i> Resultado de Optimización</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center mb-3">
+                        <div class="col-md-3">
+                            <div class="p-3 bg-light rounded">
+                                <i class="bi bi-layers text-primary" style="font-size: 2rem;"></i>
+                                <h3 class="mt-2 mb-0" id="totalBarras">-</h3>
+                                <small class="text-muted">Barras Necesarias</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="p-3 bg-light rounded">
+                                <i class="bi bi-scissors text-info" style="font-size: 2rem;"></i>
+                                <h3 class="mt-2 mb-0" id="totalPiezas">-</h3>
+                                <small class="text-muted">Piezas Cortadas</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="p-3 bg-light rounded">
+                                <i class="bi bi-trash text-danger" style="font-size: 2rem;"></i>
+                                <h3 class="mt-2 mb-0" id="desperdicioTotal">-</h3>
+                                <small class="text-muted">Desperdicio (mm)</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="p-3 bg-light rounded">
+                                <i class="bi bi-percent text-warning" style="font-size: 2rem;"></i>
+                                <h3 class="mt-2 mb-0" id="desperdicioPorcentaje">-</h3>
+                                <small class="text-muted">Desperdicio (%)</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Medidor de Eficiencia -->
+                    <div class="mb-3">
+                        <label class="form-label">
+                            <strong>Eficiencia del Corte:</strong>
+                        </label>
+                        <div class="efficiency-meter">
+                            <div class="efficiency-fill" id="efficiencyBar" style="width: 0%;">
+                                <span id="efficiencyText">0%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Análisis -->
+                    <div class="alert alert-info mb-0" id="analisisResultado">
+                        <strong><i class="bi bi-info-circle"></i> Análisis:</strong>
+                        <p class="mb-0" id="analisisTexto"></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Patrón de Corte Visual -->
+            <div class="card resultado-card">
+                <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-diagram-3"></i> Patrón de Corte</h5>
+                    <button class="btn btn-sm btn-light" id="btnGuardarPatron">
+                        <i class="bi bi-save"></i> Guardar Resultado
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div id="patronCorte">
+                        <!-- El patrón de corte se generará aquí -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mensaje inicial -->
+        <div id="mensajeInicial" class="card">
+            <div class="card-body text-center py-5">
+                <i class="bi bi-calculator" style="font-size: 5rem; color: #ddd;"></i>
+                <h4 class="mt-3 text-muted">Ingresa los datos y optimiza</h4>
+                <p class="text-muted">
+                    Selecciona un material, agrega las piezas requeridas y presiona 
+                    <strong>Optimizar Corte</strong> para ver los resultados.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Variables globales
+let piezas = [];
+let ultimoResultado = null;
+
+// Event Listeners
+document.addEventListener('DOMContentLoaded', function() {
+    // Mostrar información del material seleccionado
+    document.getElementById('material_id').addEventListener('change', function() {
+        const selectedOption = this.options[this.selectedIndex];
+        const longitud = selectedOption.dataset.longitud;
+        const stock = selectedOption.dataset.stock;
+        
+        if (this.value) {
+            document.getElementById('materialInfo').classList.remove('d-none');
+            document.getElementById('materialDetails').innerHTML = `
+                <div class="mt-2">
+                    <i class="bi bi-rulers"></i> Longitud: <strong>${longitud} mm</strong><br>
+                    <i class="bi bi-box-seam"></i> Stock disponible: <strong>${stock} unidades</strong>
+                </div>
+            `;
+        } else {
+            document.getElementById('materialInfo').classList.add('d-none');
+        }
+    });
+
+    // Agregar pieza
+    document.getElementById('btnAgregarPieza').addEventListener('click', agregarPieza);
+    
+    // Enter en inputs para agregar pieza
+    document.getElementById('pieza_longitud').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            agregarPieza();
+        }
+    });
+    
+    document.getElementById('pieza_cantidad').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            agregarPieza();
+        }
+    });
+
+    // Limpiar formulario
+    document.getElementById('btnLimpiar').addEventListener('click', limpiarFormulario);
+
+    // Optimizar
+    document.getElementById('optimizerForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        optimizarCorte();
+    });
+});
+
+// Agregar pieza a la lista
+function agregarPieza() {
+    const longitud = parseFloat(document.getElementById('pieza_longitud').value);
+    const cantidad = parseInt(document.getElementById('pieza_cantidad').value);
+    
+    if (!longitud || longitud <= 0) {
+        alert('Por favor ingresa una longitud válida');
+        return;
+    }
+    
+    if (!cantidad || cantidad <= 0) {
+        alert('Por favor ingresa una cantidad válida');
+        return;
+    }
+    
+    // Validar que la pieza no exceda la longitud del material
+    const materialSelect = document.getElementById('material_id');
+    if (materialSelect.value) {
+        const longitudBarra = parseFloat(materialSelect.options[materialSelect.selectedIndex].dataset.longitud);
+        if (longitud > longitudBarra) {
+            alert(`La pieza (${longitud}mm) excede la longitud de la barra (${longitudBarra}mm)`);
+            return;
+        }
+    }
+    
+    // Agregar pieza al array
+    piezas.push({ longitud, cantidad });
+    
+    // Actualizar vista
+    actualizarListaPiezas();
+    
+    // Limpiar inputs
+    document.getElementById('pieza_longitud').value = '';
+    document.getElementById('pieza_cantidad').value = '1';
+    document.getElementById('pieza_longitud').focus();
+}
+
+// Actualizar lista visual de piezas
+function actualizarListaPiezas() {
+    const listaPiezas = document.getElementById('listaPiezas');
+    
+    if (piezas.length === 0) {
+        listaPiezas.innerHTML = '<p class="text-muted text-center">No hay piezas agregadas</p>';
+        return;
+    }
+    
+    listaPiezas.innerHTML = piezas.map((pieza, index) => `
+        <div class="pieza-item p-3 rounded d-flex justify-content-between align-items-center">
+            <div>
+                <strong>${pieza.longitud} mm</strong>
+                <span class="badge bg-primary ms-2">${pieza.cantidad} unidades</span>
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-danger" onclick="eliminarPieza(${index})">
+                <i class="bi bi-trash"></i>
+            </button>
+        </div>
+    `).join('');
+}
+
+// Eliminar pieza
+function eliminarPieza(index) {
+    piezas.splice(index, 1);
+    actualizarListaPiezas();
+}
+
+// Limpiar formulario
+function limpiarFormulario() {
+    piezas = [];
+    ultimoResultado = null;
+    actualizarListaPiezas();
+    document.getElementById('optimizerForm').reset();
+    document.getElementById('materialInfo').classList.add('d-none');
+    document.getElementById('resultadosContainer').classList.add('d-none');
+    document.getElementById('mensajeInicial').classList.remove('d-none');
+}
+
+// Optimizar corte
+async function optimizarCorte() {
+    const materialId = document.getElementById('material_id').value;
+    const margenCorte = parseFloat(document.getElementById('margen_corte').value) || 3;
+    
+    // Validaciones
+    if (!materialId) {
+        alert('Por favor selecciona un material');
+        return;
+    }
+    
+    if (piezas.length === 0) {
+        alert('Por favor agrega al menos una pieza');
+        return;
+    }
+    
+    // Mostrar loading
+    const btnOptimizar = document.getElementById('btnOptimizar');
+    const spinner = btnOptimizar.querySelector('.loading-spinner');
+    btnOptimizar.disabled = true;
+    spinner.classList.add('active');
+    
+    try {
+        // Preparar datos
+        const formData = new FormData();
+        formData.append('material_id', materialId);
+        formData.append('piezas', JSON.stringify(piezas));
+        formData.append('margen_corte', margenCorte);
+        
+        // Enviar solicitud
+        const response = await fetch('{{ url_for("optimizer.calculate") }}', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const resultado = await response.json();
+        
+        if (resultado.success) {
+            ultimoResultado = resultado;
+            mostrarResultados(resultado);
+        } else {
+            alert('Error: ' + resultado.message);
+        }
+    } catch (error) {
+        alert('Error al optimizar: ' + error.message);
+    } finally {
+        // Ocultar loading
+        btnOptimizar.disabled = false;
+        spinner.classList.remove('active');
+    }
+}
+
+// Mostrar resultados
+function mostrarResultados(resultado) {
+    // Ocultar mensaje inicial y mostrar resultados
+    document.getElementById('mensajeInicial').classList.add('d-none');
+    document.getElementById('resultadosContainer').classList.remove('d-none');
+    
+    // Actualizar estadísticas
+    document.getElementById('totalBarras').textContent = resultado.barras_utilizadas;
+    document.getElementById('totalPiezas').textContent = resultado.total_piezas;
+    document.getElementById('desperdicioTotal').textContent = resultado.desperdicio_total.toFixed(2);
+    document.getElementById('desperdicioPorcentaje').textContent = resultado.desperdicio_porcentaje.toFixed(2) + '%';
+    
+    // Actualizar medidor de eficiencia
+    const eficiencia = resultado.eficiencia;
+    const efficiencyBar = document.getElementById('efficiencyBar');
+    const efficiencyText = document.getElementById('efficiencyText');
+    
+    setTimeout(() => {
+        efficiencyBar.style.width = eficiencia + '%';
+        efficiencyText.textContent = eficiencia.toFixed(2) + '%';
+        
+        // Cambiar color según eficiencia
+        if (eficiencia >= 90) {
+            efficiencyBar.style.background = 'linear-gradient(to right, #27ae60, #2ecc71)';
+        } else if (eficiencia >= 80) {
+            efficiencyBar.style.background = 'linear-gradient(to right, #f39c12, #f1c40f)';
+        } else {
+            efficiencyBar.style.background = 'linear-gradient(to right, #e74c3c, #c0392b)';
+        }
+    }, 100);
+    
+    // Generar análisis
+    let analisis = '';
+    if (eficiencia >= 95) {
+        analisis = '¡Excelente! La optimización es muy eficiente con un desperdicio mínimo.';
+    } else if (eficiencia >= 85) {
+        analisis = 'Buena optimización. El desperdicio está dentro de rangos aceptables.';
+    } else if (eficiencia >= 75) {
+        analisis = 'Optimización aceptable, aunque hay oportunidad de mejorar ajustando las piezas.';
+    } else {
+        analisis = 'El desperdicio es considerable. Considera revisar las longitudes de las piezas o usar otro material.';
+    }
+    
+    document.getElementById('analisisTexto').textContent = analisis;
+    
+    // Generar visualización del patrón de corte
+    generarPatronVisual(resultado);
+}
+
+// Generar visualización del patrón de corte
+function generarPatronVisual(resultado) {
+    const patronCorte = document.getElementById('patronCorte');
+    const longitudBarra = resultado.longitud_barra;
+    
+    let html = '';
+    
+    resultado.patron_corte.forEach((barra, index) => {
+        const piezasHTML = barra.piezas.map((pieza, pIndex) => {
+            const porcentaje = (pieza / longitudBarra) * 100;
+            const left = barra.piezas.slice(0, pIndex).reduce((sum, p) => sum + p, 0) / longitudBarra * 100;
+            
+            return `
+                <div class="pieza-visual" style="left: ${left}%; width: ${porcentaje}%;" 
+                     title="Pieza: ${pieza}mm">
+                    ${pieza}mm
+                </div>
+            `;
+        }).join('');
+        
+        const desperdicioPorcentaje = (barra.desperdicio / longitudBarra) * 100;
+        const desperdicioHTML = barra.desperdicio > 0 ? `
+            <div class="desperdicio-visual" style="width: ${desperdicioPorcentaje}%;" 
+                 title="Desperdicio: ${barra.desperdicio.toFixed(2)}mm">
+                ${barra.desperdicio.toFixed(0)}mm
+            </div>
+        ` : '';
+        
+        html += `
+            <div class="mb-4">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="mb-0">
+                        <i class="bi bi-rulers"></i> Barra ${barra.numero_barra}
+                        <span class="badge bg-secondary">${barra.cantidad_piezas} piezas</span>
+                    </h6>
+                    <small class="text-muted">
+                        Utilizado: ${barra.longitud_utilizada.toFixed(2)}mm / ${longitudBarra}mm
+                    </small>
+                </div>
+                <div class="barra-visualization">
+                    ${piezasHTML}
+                    ${desperdicioHTML}
+                </div>
+                <div class="d-flex justify-content-between">
+                    <small class="text-muted">
+                        Piezas: ${barra.piezas.join('mm, ')}mm
+                    </small>
+                    <small class="text-danger">
+                        <i class="bi bi-exclamation-triangle"></i> 
+                        Desperdicio: ${barra.desperdicio.toFixed(2)}mm
+                    </small>
+                </div>
+            </div>
+        `;
+    });
+    
+    patronCorte.innerHTML = html;
+}
+
+// Guardar patrón (funcionalidad futura para asociar con pedidos)
+document.getElementById('btnGuardarPatron').addEventListener('click', function() {
+    if (!ultimoResultado) {
+        alert('No hay resultados para guardar');
+        return;
+    }
+    
+    alert('Funcionalidad de guardado en desarrollo.\nPróximamente podrás asociar este patrón con un pedido.');
+    // Aquí se implementaría la lógica para guardar en un pedido
+});
+</script>
+{% endblock %}

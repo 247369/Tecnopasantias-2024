@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block title %}Mis Pedidos - PLECORMET{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <h1><i class="bi bi-person-workspace"></i> Mis Pedidos Asignados</h1>
+    <p class="text-muted">Pedidos asignados a {{ current_user.nombre_completo or current_user.username }}</p>
+</div>
+
+{% if mis_pedidos %}
+<div class="row">
+    {% for pedido in mis_pedidos %}
+    <div class="col-md-6 col-lg-4 mb-4">
+        <div class="card h-100">
+            <div class="card-header 
+                {% if pedido.estado == 'pendiente' %}bg-warning{% elif pedido.estado == 'en_proceso' %}bg-info{% elif pedido.estado == 'completado' %}bg-success text-white{% endif %}">
+                <h5 class="mb-0">{{ pedido.numero_pedido }}</h5>
+            </div>
+            <div class="card-body">
+                <h6 class="card-subtitle mb-2 text-muted">
+                    <i class="bi bi-person"></i> {{ pedido.cliente or 'Sin cliente' }}
+                </h6>
+                
+                <p class="card-text">
+                    <small>
+                        <i class="bi bi-box-seam"></i> 
+                        {{ pedido.material_utilizado.nombre }}<br>
+                        <i class="bi bi-calendar"></i> 
+                        {{ pedido.fecha_solicitud.strftime('%d/%m/%Y') }}
+                    </small>
+                </p>
+
+                <div class="mb-3">
+                    <span class="badge bg-secondary">{{ pedido.prioridad }}</span>
+                    {% if pedido.estado == 'pendiente' %}
+                        <span class="badge bg-warning text-dark">Pendiente</span>
+                    {% elif pedido.estado == 'en_proceso' %}
+                        <span class="badge bg-info">En Proceso</span>
+                    {% elif pedido.estado == 'completado' %}
+                        <span class="badge bg-success">Completado</span>
+                    {% endif %}
+                </div>
+
+                {% if pedido.descripcion %}
+                <p class="card-text"><small>{{ pedido.descripcion[:100] }}...</small></p>
+                {% endif %}
+            </div>
+            <div class="card-footer bg-transparent">
+                <a href="{{ url_for('orders.view_order', order_id=pedido.id) }}" 
+                   class="btn btn-primary btn-sm w-100">
+                    <i class="bi bi-eye"></i> Ver Detalles
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="card">
+    <div class="card-body text-center py-5">
+        <i class="bi bi-inbox" style="font-size: 4rem; color: #ddd;"></i>
+        <h4 class="mt-3">No tienes pedidos asignados</h4>
+        <p class="text-muted">Los pedidos asignados a ti aparecerán aquí</p>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

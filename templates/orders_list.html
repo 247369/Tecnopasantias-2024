@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+
+{% block title %}Lista de Pedidos - PLECORMET{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1><i class="bi bi-list-ul"></i> Lista de Pedidos</h1>
+        <p class="text-muted">Gestión y seguimiento de pedidos de corte</p>
+    </div>
+    {% if current_user.es_admin() %}
+    <a href="{{ url_for('orders.create_order') }}" class="btn btn-primary">
+        <i class="bi bi-plus-circle"></i> Nuevo Pedido
+    </a>
+    {% endif %}
+</div>
+
+<!-- Filtros -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="GET" action="{{ url_for('orders.list_orders') }}" class="row g-3">
+            <div class="col-md-4">
+                <label for="estado" class="form-label">Filtrar por Estado</label>
+                <select class="form-select" id="estado" name="estado" onchange="this.form.submit()">
+                    <option value="todos" {% if estado_filtro == 'todos' %}selected{% endif %}>Todos</option>
+                    <option value="pendiente" {% if estado_filtro == 'pendiente' %}selected{% endif %}>Pendientes</option>
+                    <option value="en_proceso" {% if estado_filtro == 'en_proceso' %}selected{% endif %}>En Proceso</option>
+                    <option value="completado" {% if estado_filtro == 'completado' %}selected{% endif %}>Completados</option>
+                    <option value="cancelado" {% if estado_filtro == 'cancelado' %}selected{% endif %}>Cancelados</option>
+                </select>
+            </div>
+            <div class="col-md-8 d-flex align-items-end">
+                <button type="submit" class="btn btn-outline-secondary me-2">
+                    <i class="bi bi-funnel"></i> Aplicar Filtros
+                </button>
+                <a href="{{ url_for('orders.list_orders') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-x-circle"></i> Limpiar
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Tabla de Pedidos -->
+<div class="card">
+    <div class="card-body">
+        {% if pedidos %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>N° Pedido</th>
+                        <th>Cliente</th>
+                        <th>Material</th>
+                        <th>Estado</th>
+                        <th>Prioridad</th>
+                        <th>Fecha Solicitud</th>
+                        <th>Entrega Est.</th>
+                        {% if current_user.es_admin() %}
+                        <th>Empleado</th>
+                        {% endif %}
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for pedido in pedidos %}
+                    <tr>
+                        <td>
+                            <strong>{{ pedido.numero_pedido }}</strong>
+                        </td>
+                        <td>{{ pedido.cliente or '-' }}</td>
+                        <td>
+                            <small>{{ pedido.material_utilizado.nombre }}</small>
+                        </td>
+                        <td>
+                            {% if pedido.estado == 'pendiente' %}
+                                <span class="badge bg-warning text-dark">
+                                    <i class="bi bi-hourglass-split"></i> Pendiente
+                                </span>
+                            {% elif pedido.estado == 'en_proceso' %}
+                                <span class="badge bg-info">
+                                    <i class="bi bi-gear-fill"></i> En Proceso
+                                </span>
+                            {% elif pedido.estado == 'completado' %}
+                                <span class="badge bg-success">
+                                    <i class="bi bi-check-circle-fill"></i> Completado
+                                </span>
+                            {% elif pedido.estado == 'cancelado' %}
+                                <span class="badge bg-danger">
+                                    <i class="bi bi-x-circle-fill"></i> Cancelado
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if pedido.prioridad == 'urgente' %}
+                                <span class="badge bg-danger">Urgente</span>
+                            {% elif pedido.prioridad == 'alta' %}
+                                <span class="badge bg-warning text-dark">Alta</span>
+                            {% elif pedido.prioridad == 'normal' %}
+                                <span class="badge bg-secondary">Normal</span>
+                            {% else %}
+                                <span class="badge bg-light text-dark">Baja</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <small>{{ pedido.fecha_solicitud.strftime('%d/%m/%Y') }}</small>
+                        </td>
+                        <td>
+                            {% if pedido.fecha_entrega_estimada %}
+                                <small>{{ pedido.fecha_entrega_estimada.strftime('%d/%m/%Y') }}</small>
+                            {% else %}
+                                <small class="text-muted">-</small>
+                            {% endif %}
+                        </td>
+                        {% if current_user.es_admin() %}
+                        <td>
+                            {% if pedido.empleado_asignado %}
+                                <small>{{ pedido.empleado_asignado.nombre_completo or pedido.empleado_asignado.username }}</small>
+                            {% else %}
+                                <small class="text-muted">Sin asignar</small>
+                            {% endif %}
+                        </td>
+                        {% endif %}
+                        <td>
+                            <div class="btn-group" role="group">
+                                <a href="{{ url_for('orders.view_order', order_id=pedido.id) }}" 
+                                   class="btn btn-sm btn-outline-primary" 
+                                   title="Ver detalles">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                {% if current_user.es_admin() %}
+                                <button type="button" 
+                                        class="btn btn-sm btn-outline-danger" 
+                                        onclick="confirmarEliminar('{{ pedido.id }}', '{{ pedido.numero_pedido }}')"
+                                        title="Eliminar">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Resumen -->
+        <div class="mt-3 text-muted">
+            <small>Mostrando {{ pedidos|length }} pedido(s)</small>
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+            <i class="bi bi-inbox" style="font-size: 4rem; color: #ddd;"></i>
+            <h4 class="mt-3 text-muted">No hay pedidos</h4>
+            <p class="text-muted">
+                {% if estado_filtro != 'todos' %}
+                    No se encontraron pedidos con el filtro aplicado.
+                {% else %}
+                    Aún no hay pedidos registrados en el sistema.
+                {% endif %}
+            </p>
+            {% if current_user.es_admin() %}
+            <a href="{{ url_for('orders.create_order') }}" class="btn btn-primary">
+                <i class="bi bi-plus-circle"></i> Crear Primer Pedido
+            </a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Modal de confirmación de eliminación -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-exclamation-triangle"></i> Confirmar Eliminación
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>¿Estás seguro de eliminar el pedido <strong id="pedidoNumero"></strong>?</p>
+                <p class="text-danger">Esta acción no se puede deshacer.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <form id="deleteForm" method="POST" style="display: inline;">
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-trash"></i> Eliminar
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let deleteModal;
+
+document.addEventListener('DOMContentLoaded', function() {
+    deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+});
+
+function confirmarEliminar(pedidoId, numeroP edido) {
+    document.getElementById('pedidoNumero').textContent = numeroPedido;
+    document.getElementById('deleteForm').action = `/orders/${pedidoId}/delete`;
+    deleteModal.show();
+}
+</script>
+{% endblock %}

@@ -1,0 +1,325 @@
+{% extends "base.html" %}
+
+{% block title %}Materiales - PLECORMET{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1><i class="bi bi-box-seam"></i> Gestión de Materiales</h1>
+        <p class="text-muted">Inventario de materiales disponibles para corte</p>
+    </div>
+    {% if current_user.es_admin() %}
+    <a href="{{ url_for('orders.create_material') }}" class="btn btn-primary">
+        <i class="bi bi-plus-circle"></i> Agregar Material
+    </a>
+    {% endif %}
+</div>
+
+<!-- Resumen de Inventario -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card bg-primary text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-uppercase mb-1">Total Materiales</h6>
+                        <h2 class="mb-0">{{ materiales|length }}</h2>
+                    </div>
+                    <i class="bi bi-box-seam" style="font-size: 3rem; opacity: 0.3;"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card bg-success text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-uppercase mb-1">Stock Normal</h6>
+                        <h2 class="mb-0">
+                            {% set stock_normal = namespace(count=0) %}
+                            {% for material in materiales %}
+                                {% if material.cantidad_stock > material.stock_minimo %}
+                                    {% set stock_normal.count = stock_normal.count + 1 %}
+                                {% endif %}
+                            {% endfor %}
+                            {{ stock_normal.count }}
+                        </h2>
+                    </div>
+                    <i class="bi bi-check-circle-fill" style="font-size: 3rem; opacity: 0.3;"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card bg-danger text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-uppercase mb-1">Stock Bajo</h6>
+                        <h2 class="mb-0">
+                            {% set stock_bajo = namespace(count=0) %}
+                            {% for material in materiales %}
+                                {% if material.stock_bajo() %}
+                                    {% set stock_bajo.count = stock_bajo.count + 1 %}
+                                {% endif %}
+                            {% endfor %}
+                            {{ stock_bajo.count }}
+                        </h2>
+                    </div>
+                    <i class="bi bi-exclamation-triangle-fill" style="font-size: 3rem; opacity: 0.3;"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Lista de Materiales -->
+<div class="card">
+    <div class="card-body">
+        {% if materiales %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Material</th>
+                        <th>Tipo</th>
+                        <th>Especificación</th>
+                        <th>Longitud (mm)</th>
+                        <th>Diámetro/Espesor</th>
+                        <th>Stock Actual</th>
+                        <th>Stock Mínimo</th>
+                        <th>Precio Unit.</th>
+                        <th>Estado</th>
+                        {% if current_user.es_admin() %}
+                        <th>Acciones</th>
+                        {% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for material in materiales %}
+                    <tr {% if material.stock_bajo() %}class="table-danger"{% endif %}>
+                        <td>
+                            <strong>{{ material.nombre }}</strong>
+                        </td>
+                        <td>
+                            <span class="badge bg-secondary">{{ material.tipo }}</span>
+                        </td>
+                        <td>
+                            <small>{{ material.material or '-' }}</small>
+                        </td>
+                        <td>
+                            <strong>{{ material.longitud_disponible }}</strong>
+                        </td>
+                        <td>
+                            {% if material.diametro_espesor %}
+                                {{ material.diametro_espesor }}mm
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if material.stock_bajo() %}
+                                <span class="badge bg-danger">
+                                    <i class="bi bi-exclamation-triangle"></i> {{ material.cantidad_stock }}
+                                </span>
+                            {% elif material.cantidad_stock == 0 %}
+                                <span class="badge bg-dark">
+                                    <i class="bi bi-x-circle"></i> Agotado
+                                </span>
+                            {% else %}
+                                <span class="badge bg-success">{{ material.cantidad_stock }}</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ material.stock_minimo }}</td>
+                        <td>
+                            {% if material.precio_unitario %}
+                                ${{ material.precio_unitario|round(2) }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if material.activo %}
+                                <span class="badge bg-success">
+                                    <i class="bi bi-check-circle"></i> Activo
+                                </span>
+                            {% else %}
+                                <span class="badge bg-secondary">
+                                    <i class="bi bi-pause-circle"></i> Inactivo
+                                </span>
+                            {% endif %}
+                        </td>
+                        {% if current_user.es_admin() %}
+                        <td>
+                            <div class="btn-group" role="group">
+                                <button type="button" 
+                                        class="btn btn-sm btn-outline-primary" 
+                                        onclick="mostrarDetalles('{{ material.id }}')"
+                                        title="Ver detalles">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                                <button type="button" 
+                                        class="btn btn-sm btn-outline-success" 
+                                        onclick="ajustarStock('{{ material.id }}', '{{ material.nombre }}', {{ material.cantidad_stock }})"
+                                        title="Ajustar stock">
+                                    <i class="bi bi-box-arrow-in-down"></i>
+                                </button>
+                            </div>
+                        </td>
+                        {% endif %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Leyenda -->
+        <div class="mt-3">
+            <small class="text-muted">
+                <i class="bi bi-info-circle"></i> 
+                Las filas en <span class="text-danger">rojo</span> indican materiales con stock bajo o agotado.
+            </small>
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+            <i class="bi bi-inbox" style="font-size: 4rem; color: #ddd;"></i>
+            <h4 class="mt-3 text-muted">No hay materiales registrados</h4>
+            <p class="text-muted">Comienza agregando materiales al inventario.</p>
+            {% if current_user.es_admin() %}
+            <a href="{{ url_for('orders.create_material') }}" class="btn btn-primary">
+                <i class="bi bi-plus-circle"></i> Agregar Primer Material
+            </a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Modal de Detalles -->
+<div class="modal fade" id="detallesModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-info-circle"></i> Detalles del Material
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="detallesContent">
+                    <p class="text-center"><i class="bi bi-hourglass-split"></i> Cargando...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Ajustar Stock -->
+<div class="modal fade" id="stockModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-box-arrow-in-down"></i> Ajustar Stock
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="stockForm" method="POST">
+                <div class="modal-body">
+                    <p>Ajustar stock de: <strong id="materialNombre"></strong></p>
+                    
+                    <div class="mb-3">
+                        <label for="stock_actual" class="form-label">Stock Actual</label>
+                        <input type="number" class="form-control" id="stock_actual" readonly>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="ajuste_tipo" class="form-label">Tipo de Ajuste</label>
+                        <select class="form-select" id="ajuste_tipo">
+                            <option value="agregar">Agregar Stock</option>
+                            <option value="restar">Restar Stock</option>
+                            <option value="establecer">Establecer Stock</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="cantidad_ajuste" class="form-label">Cantidad</label>
+                        <input type="number" class="form-control" id="cantidad_ajuste" 
+                               min="0" required placeholder="Ingrese cantidad">
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <strong>Nuevo Stock:</strong> <span id="nuevo_stock">-</span>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-check"></i> Aplicar Ajuste
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let detallesModal, stockModal;
+let stockActual = 0;
+let materialId = null;
+
+document.addEventListener('DOMContentLoaded', function() {
+    detallesModal = new bootstrap.Modal(document.getElementById('detallesModal'));
+    stockModal = new bootstrap.Modal(document.getElementById('stockModal'));
+    
+    // Calcular nuevo stock al cambiar valores
+    document.getElementById('ajuste_tipo').addEventListener('change', calcularNuevoStock);
+    document.getElementById('cantidad_ajuste').addEventListener('input', calcularNuevoStock);
+});
+
+function mostrarDetalles(id) {
+    document.getElementById('detallesContent').innerHTML = `
+        <p>Funcionalidad de detalles en desarrollo.</p>
+        <p>ID del material: ${id}</p>
+    `;
+    detallesModal.show();
+}
+
+function ajustarStock(id, nombre, stock) {
+    materialId = id;
+    stockActual = stock;
+    
+    document.getElementById('materialNombre').textContent = nombre;
+    document.getElementById('stock_actual').value = stock;
+    document.getElementById('cantidad_ajuste').value = '';
+    document.getElementById('nuevo_stock').textContent = stock;
+    
+    stockModal.show();
+}
+
+function calcularNuevoStock() {
+    const tipo = document.getElementById('ajuste_tipo').value;
+    const cantidad = parseInt(document.getElementById('cantidad_ajuste').value) || 0;
+    let nuevoStock = stockActual;
+    
+    if (tipo === 'agregar') {
+        nuevoStock = stockActual + cantidad;
+    } else if (tipo === 'restar') {
+        nuevoStock = Math.max(0, stockActual - cantidad);
+    } else if (tipo === 'establecer') {
+        nuevoStock = cantidad;
+    }
+    
+    document.getElementById('nuevo_stock').textContent = nuevoStock;
+}
+
+document.getElementById('stockForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    alert('Funcionalidad de ajuste de stock en desarrollo.\nNecesitarás crear una ruta en el backend para esto.');
+    stockModal.hide();
+});
+</script>
+{% endblock %}

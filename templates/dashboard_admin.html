@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard Administrativo - PLECORMET{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="bi bi-speedometer2"></i> Dashboard Administrativo</h1>
+    <a href="{{ url_for('orders.create_order') }}" class="btn btn-primary">
+        <i class="bi bi-plus-circle"></i> Nuevo Pedido
+    </a>
+</div>
+
+<!-- Estadísticas -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card stat-card bg-warning text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-uppercase mb-1">Pendientes</h6>
+                        <h2 class="mb-0">{{ pedidos_pendientes }}</h2>
+                    </div>
+                    <i class="bi bi-hourglass-split" style="font-size: 3rem; opacity: 0.3;"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card stat-card bg-info text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-uppercase mb-1">En Proceso</h6>
+                        <h2 class="mb-0">{{ pedidos_en_proceso }}</h2>
+                    </div>
+                    <i class="bi bi-gear-fill" style="font-size: 3rem; opacity: 0.3;"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card stat-card bg-success text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-uppercase mb-1">Completados</h6>
+                        <h2 class="mb-0">{{ pedidos_completados }}</h2>
+                    </div>
+                    <i class="bi bi-check-circle-fill" style="font-size: 3rem; opacity: 0.3;"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card stat-card bg-primary text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-uppercase mb-1">Total</h6>
+                        <h2 class="mb-0">{{ pedidos_pendientes + pedidos_en_proceso + pedidos_completados }}</h2>
+                    </div>
+                    <i class="bi bi-clipboard-data" style="font-size: 3rem; opacity: 0.3;"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Alertas de Stock Bajo -->
+{% if materiales_bajo_stock %}
+<div class="card border-danger mb-4">
+    <div class="card-header bg-danger text-white">
+        <i class="bi bi-exclamation-triangle-fill"></i> Alertas de Stock Bajo
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-sm">
+                <thead>
+                    <tr>
+                        <th>Material</th>
+                        <th>Tipo</th>
+                        <th>Stock Actual</th>
+                        <th>Stock Mínimo</th>
+                        <th>Acción</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for material in materiales_bajo_stock %}
+                    <tr>
+                        <td>{{ material.nombre }}</td>
+                        <td>{{ material.tipo }}</td>
+                        <td><span class="badge bg-danger">{{ material.cantidad_stock }}</span></td>
+                        <td>{{ material.stock_minimo }}</td>
+                        <td>
+                            <a href="#" class="btn btn-sm btn-outline-primary">Reabastecer</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Últimos Pedidos -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="bi bi-list-ul"></i> Últimos Pedidos</h5>
+        <a href="{{ url_for('orders.list_orders') }}" class="btn btn-sm btn-outline-primary">Ver Todos</a>
+    </div>
+    <div class="card-body">
+        {% if ultimos_pedidos %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>N° Pedido</th>
+                        <th>Cliente</th>
+                        <th>Material</th>
+                        <th>Estado</th>
+                        <th>Prioridad</th>
+                        <th>Fecha</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for pedido in ultimos_pedidos %}
+                    <tr>
+                        <td><strong>{{ pedido.numero_pedido }}</strong></td>
+                        <td>{{ pedido.cliente or '-' }}</td>
+                        <td>{{ pedido.material_utilizado.nombre }}</td>
+                        <td>
+                            {% if pedido.estado == 'pendiente' %}
+                                <span class="badge bg-warning text-dark">Pendiente</span>
+                            {% elif pedido.estado == 'en_proceso' %}
+                                <span class="badge bg-info">En Proceso</span>
+                            {% elif pedido.estado == 'completado' %}
+                                <span class="badge bg-success">Completado</span>
+                            {% else %}
+                                <span class="badge bg-danger">{{ pedido.estado }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if pedido.prioridad == 'urgente' %}
+                                <span class="badge bg-danger">Urgente</span>
+                            {% elif pedido.prioridad == 'alta' %}
+                                <span class="badge bg-warning">Alta</span>
+                            {% else %}
+                                <span class="badge bg-secondary">{{ pedido.prioridad }}</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ pedido.fecha_solicitud.strftime('%d/%m/%Y') }}</td>
+                        <td>
+                            <a href="{{ url_for('orders.view_order', order_id=pedido.id) }}" 
+                               class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-muted text-center mb-0">No hay pedidos registrados</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

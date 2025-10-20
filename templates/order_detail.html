@@ -1,0 +1,548 @@
+{% extends "base.html" %}
+
+{% block title %}Pedido {{ pedido.numero_pedido }} - PLECORMET{% endblock %}
+
+{% block extra_css %}
+<style>
+    .info-label {
+        font-weight: 600;
+        color: #6c757d;
+        font-size: 0.875rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .info-value {
+        font-size: 1.1rem;
+        color: #212529;
+    }
+    
+    .barra-visual {
+        height: 60px;
+        background: linear-gradient(to right, #34495e 0%, #2c3e50 100%);
+        border-radius: 8px;
+        position: relative;
+        margin-bottom: 1rem;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+        overflow: hidden;
+    }
+    
+    .pieza-corte {
+        position: absolute;
+        height: 100%;
+        background: linear-gradient(135deg, #3498db, #2980b9);
+        border-right: 2px solid #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 0.75rem;
+        font-weight: bold;
+    }
+    
+    .desperdicio-corte {
+        position: absolute;
+        height: 100%;
+        background: repeating-linear-gradient(
+            45deg,
+            #e74c3c,
+            #e74c3c 10px,
+            #c0392b 10px,
+            #c0392b 20px
+        );
+        right: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 0.75rem;
+    }
+    
+    .status-timeline {
+        position: relative;
+        padding-left: 30px;
+    }
+    
+    .status-timeline::before {
+        content: '';
+        position: absolute;
+        left: 9px;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        background: #dee2e6;
+    }
+    
+    .status-timeline-item {
+        position: relative;
+        padding-bottom: 1.5rem;
+    }
+    
+    .status-timeline-item::before {
+        content: '';
+        position: absolute;
+        left: -26px;
+        top: 5px;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: #fff;
+        border: 2px solid #dee2e6;
+    }
+    
+    .status-timeline-item.active::before {
+        background: #0d6efd;
+        border-color: #0d6efd;
+    }
+    
+    .status-timeline-item.completed::before {
+        background: #198754;
+        border-color: #198754;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('orders.dashboard') }}">Dashboard</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('orders.list_orders') }}">Pedidos</a></li>
+            <li class="breadcrumb-item active">{{ pedido.numero_pedido }}</li>
+        </ol>
+    </nav>
+    
+    <div class="d-flex justify-content-between align-items-start">
+        <div>
+            <h1><i class="bi bi-file-text"></i> Pedido {{ pedido.numero_pedido }}</h1>
+            <p class="text-muted mb-0">Detalles completos del pedido</p>
+        </div>
+        <div>
+            {% if pedido.estado == 'pendiente' %}
+                <span class="badge bg-warning text-dark fs-6">
+                    <i class="bi bi-hourglass-split"></i> Pendiente
+                </span>
+            {% elif pedido.estado == 'en_proceso' %}
+                <span class="badge bg-info fs-6">
+                    <i class="bi bi-gear-fill"></i> En Proceso
+                </span>
+            {% elif pedido.estado == 'completado' %}
+                <span class="badge bg-success fs-6">
+                    <i class="bi bi-check-circle-fill"></i> Completado
+                </span>
+            {% elif pedido.estado == 'cancelado' %}
+                <span class="badge bg-danger fs-6">
+                    <i class="bi bi-x-circle-fill"></i> Cancelado
+                </span>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Columna Principal -->
+    <div class="col-lg-8">
+        <!-- Información General -->
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="bi bi-info-circle"></i> Información General</h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        <div class="info-label">Cliente</div>
+                        <div class="info-value">{{ pedido.cliente or 'No especificado' }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="info-label">Material</div>
+                        <div class="info-value">{{ pedido.material_utilizado.nombre }}</div>
+                        <small class="text-muted">
+                            {{ pedido.material_utilizado.tipo }} - 
+                            {{ pedido.material_utilizado.longitud_disponible }}mm
+                        </small>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="info-label">Prioridad</div>
+                        <div class="info-value">
+                            {% if pedido.prioridad == 'urgente' %}
+                                <span class="badge bg-danger">Urgente</span>
+                            {% elif pedido.prioridad == 'alta' %}
+                                <span class="badge bg-warning text-dark">Alta</span>
+                            {% elif pedido.prioridad == 'normal' %}
+                                <span class="badge bg-secondary">Normal</span>
+                            {% else %}
+                                <span class="badge bg-light text-dark">Baja</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="info-label">Fecha de Solicitud</div>
+                        <div class="info-value">{{ pedido.fecha_solicitud.strftime('%d/%m/%Y %H:%M') }}</div>
+                    </div>
+                    {% if pedido.fecha_entrega_estimada %}
+                    <div class="col-md-6">
+                        <div class="info-label">Entrega Estimada</div>
+                        <div class="info-value">{{ pedido.fecha_entrega_estimada.strftime('%d/%m/%Y') }}</div>
+                    </div>
+                    {% endif %}
+                    {% if pedido.fecha_completado %}
+                    <div class="col-md-6">
+                        <div class="info-label">Fecha de Completado</div>
+                        <div class="info-value">{{ pedido.fecha_completado.strftime('%d/%m/%Y %H:%M') }}</div>
+                    </div>
+                    {% endif %}
+                    {% if pedido.empleado_asignado %}
+                    <div class="col-md-6">
+                        <div class="info-label">Empleado Asignado</div>
+                        <div class="info-value">
+                            {{ pedido.empleado_asignado.nombre_completo or pedido.empleado_asignado.username }}
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% if pedido.descripcion %}
+                    <div class="col-12">
+                        <div class="info-label">Descripción</div>
+                        <div class="info-value">{{ pedido.descripcion }}</div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Resultados de Optimización -->
+        {% if pedido.barras_utilizadas %}
+        <div class="card mb-4">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0"><i class="bi bi-graph-up"></i> Resultados de Optimización</h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center mb-4">
+                    <div class="col-md-3">
+                        <div class="p-3 bg-light rounded">
+                            <i class="bi bi-layers text-primary" style="font-size: 2rem;"></i>
+                            <h3 class="mt-2 mb-0">{{ pedido.barras_utilizadas }}</h3>
+                            <small class="text-muted">Barras Necesarias</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="p-3 bg-light rounded">
+                            <i class="bi bi-trash text-danger" style="font-size: 2rem;"></i>
+                            <h3 class="mt-2 mb-0">{{ pedido.desperdicio_total|round(2) }}</h3>
+                            <small class="text-muted">Desperdicio (mm)</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="p-3 bg-light rounded">
+                            <i class="bi bi-percent text-warning" style="font-size: 2rem;"></i>
+                            <h3 class="mt-2 mb-0">{{ pedido.desperdicio_porcentaje|round(2) }}%</h3>
+                            <small class="text-muted">Desperdicio</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="p-3 bg-light rounded">
+                            <i class="bi bi-lightning-charge text-success" style="font-size: 2rem;"></i>
+                            <h3 class="mt-2 mb-0">{{ (100 - pedido.desperdicio_porcentaje)|round(2) }}%</h3>
+                            <small class="text-muted">Eficiencia</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Análisis -->
+                <div class="alert 
+                    {% if pedido.desperdicio_porcentaje < 5 %}alert-success
+                    {% elif pedido.desperdicio_porcentaje < 10 %}alert-info
+                    {% elif pedido.desperdicio_porcentaje < 15 %}alert-warning
+                    {% else %}alert-danger{% endif %}">
+                    <strong><i class="bi bi-info-circle"></i> Análisis:</strong>
+                    {% if pedido.desperdicio_porcentaje < 5 %}
+                        Excelente optimización con desperdicio mínimo.
+                    {% elif pedido.desperdicio_porcentaje < 10 %}
+                        Buena optimización, desperdicio dentro de rangos aceptables.
+                    {% elif pedido.desperdicio_porcentaje < 15 %}
+                        Optimización aceptable, considerar ajustar las piezas si es posible.
+                    {% else %}
+                        Alto nivel de desperdicio. Revisar las medidas o considerar otro material.
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Patrón de Corte Visual -->
+        {% if patron %}
+        <div class="card mb-4">
+            <div class="card-header bg-dark text-white">
+                <h5 class="mb-0"><i class="bi bi-diagram-3"></i> Patrón de Corte</h5>
+            </div>
+            <div class="card-body">
+                {% for barra in patron %}
+                <div class="mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="mb-0">
+                            <i class="bi bi-rulers"></i> Barra {{ barra.numero_barra }}
+                            <span class="badge bg-secondary">{{ barra.cantidad_piezas }} piezas</span>
+                        </h6>
+                        <small class="text-muted">
+                            Utilizado: {{ barra.longitud_utilizada|round(2) }}mm / 
+                            {{ pedido.material_utilizado.longitud_disponible }}mm
+                        </small>
+                    </div>
+                    
+                    <!-- Visualización de la barra -->
+                    <div class="barra-visual">
+                        {% set longitud_total = pedido.material_utilizado.longitud_disponible %}
+                        {% set posicion_actual = 0 %}
+                        
+                        {% for pieza in barra.piezas %}
+                            {% set porcentaje_pieza = (pieza / longitud_total) * 100 %}
+                            {% set posicion_izq = (posicion_actual / longitud_total) * 100 %}
+                            <div class="pieza-corte" 
+                                 style="left: {{ posicion_izq }}%; width: {{ porcentaje_pieza }}%;"
+                                 title="Pieza: {{ pieza }}mm">
+                                {{ pieza }}mm
+                            </div>
+                            {% set posicion_actual = posicion_actual + pieza %}
+                        {% endfor %}
+                        
+                        {% if barra.desperdicio > 0 %}
+                            {% set porcentaje_desp = (barra.desperdicio / longitud_total) * 100 %}
+                            <div class="desperdicio-corte" 
+                                 style="width: {{ porcentaje_desp }}%;"
+                                 title="Desperdicio: {{ barra.desperdicio|round(2) }}mm">
+                                {{ barra.desperdicio|round(0) }}mm
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Detalles de piezas -->
+                    <div class="d-flex justify-content-between">
+                        <small class="text-muted">
+                            <i class="bi bi-scissors"></i> Piezas: 
+                            {% for pieza in barra.piezas %}
+                                {{ pieza }}mm{% if not loop.last %}, {% endif %}
+                            {% endfor %}
+                        </small>
+                        <small class="text-danger">
+                            <i class="bi bi-exclamation-triangle"></i> 
+                            Desperdicio: {{ barra.desperdicio|round(2) }}mm
+                        </small>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+        {% endif %}
+
+        <!-- Piezas Requeridas -->
+        {% if piezas %}
+        <div class="card mb-4">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0"><i class="bi bi-rulers"></i> Piezas Requeridas</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Longitud (mm)</th>
+                                <th>Cantidad</th>
+                                <th>Total (mm)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for pieza in piezas %}
+                            <tr>
+                                <td>{{ loop.index }}</td>
+                                <td><strong>{{ pieza.longitud }}</strong></td>
+                                <td><span class="badge bg-primary">{{ pieza.cantidad }}</span></td>
+                                <td>{{ pieza.longitud * pieza.cantidad }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot class="table-light">
+                            <tr>
+                                <td colspan="2"><strong>Total de piezas:</strong></td>
+                                <td colspan="2">
+                                    <strong>{{ piezas|sum(attribute='cantidad') }} unidades</strong>
+                                </td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Notas -->
+        {% if pedido.notas %}
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-sticky"></i> Notas</h5>
+            </div>
+            <div class="card-body">
+                <p class="mb-0">{{ pedido.notas }}</p>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Columna Lateral -->
+    <div class="col-lg-4">
+        <!-- Acciones -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-gear"></i> Acciones</h5>
+            </div>
+            <div class="card-body">
+                <!-- Cambiar Estado -->
+                {% if current_user.es_admin() or pedido.empleado_id == current_user.id %}
+                <form method="POST" action="{{ url_for('orders.update_status', order_id=pedido.id) }}" class="mb-3">
+                    <label for="estado" class="form-label">Cambiar Estado</label>
+                    <div class="input-group">
+                        <select class="form-select" id="estado" name="estado">
+                            <option value="pendiente" {% if pedido.estado == 'pendiente' %}selected{% endif %}>
+                                Pendiente
+                            </option>
+                            <option value="en_proceso" {% if pedido.estado == 'en_proceso' %}selected{% endif %}>
+                                En Proceso
+                            </option>
+                            <option value="completado" {% if pedido.estado == 'completado' %}selected{% endif %}>
+                                Completado
+                            </option>
+                            <option value="cancelado" {% if pedido.estado == 'cancelado' %}selected{% endif %}>
+                                Cancelado
+                            </option>
+                        </select>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check"></i>
+                        </button>
+                    </div>
+                </form>
+                {% endif %}
+
+                <div class="d-grid gap-2">
+                    <!-- Ir al Optimizador -->
+                    {% if not pedido.patron_corte %}
+                    <a href="{{ url_for('optimizer.index') }}" class="btn btn-success">
+                        <i class="bi bi-calculator"></i> Optimizar Cortes
+                    </a>
+                    {% endif %}
+
+                    <!-- Volver a Pedidos -->
+                    <a href="{{ url_for('orders.list_orders') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left"></i> Volver a Pedidos
+                    </a>
+
+                    <!-- Eliminar (Solo Admin) -->
+                    {% if current_user.es_admin() %}
+                    <button type="button" class="btn btn-outline-danger" 
+                            onclick="confirmarEliminar()">
+                        <i class="bi bi-trash"></i> Eliminar Pedido
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Timeline de Estado -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-clock-history"></i> Estado del Pedido</h5>
+            </div>
+            <div class="card-body">
+                <div class="status-timeline">
+                    <div class="status-timeline-item completed">
+                        <div class="fw-bold">Creado</div>
+                        <small class="text-muted">
+                            {{ pedido.fecha_solicitud.strftime('%d/%m/%Y %H:%M') }}
+                        </small>
+                    </div>
+                    
+                    <div class="status-timeline-item {% if pedido.estado in ['en_proceso', 'completado'] %}completed{% elif pedido.estado == 'en_proceso' %}active{% endif %}">
+                        <div class="fw-bold">En Proceso</div>
+                        <small class="text-muted">
+                            {% if pedido.estado in ['en_proceso', 'completado'] %}
+                                En curso
+                            {% else %}
+                                Pendiente
+                            {% endif %}
+                        </small>
+                    </div>
+                    
+                    <div class="status-timeline-item {% if pedido.estado == 'completado' %}completed{% elif pedido.estado == 'completado' %}active{% endif %}">
+                        <div class="fw-bold">Completado</div>
+                        <small class="text-muted">
+                            {% if pedido.fecha_completado %}
+                                {{ pedido.fecha_completado.strftime('%d/%m/%Y %H:%M') }}
+                            {% else %}
+                                Pendiente
+                            {% endif %}
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Información del Material -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-box-seam"></i> Material</h5>
+            </div>
+            <div class="card-body">
+                <h6>{{ pedido.material_utilizado.nombre }}</h6>
+                <ul class="list-unstyled small mb-0">
+                    <li><strong>Tipo:</strong> {{ pedido.material_utilizado.tipo }}</li>
+                    <li><strong>Material:</strong> {{ pedido.material_utilizado.material or 'N/A' }}</li>
+                    <li><strong>Longitud:</strong> {{ pedido.material_utilizado.longitud_disponible }}mm</li>
+                    <li><strong>Stock:</strong> 
+                        <span class="badge {% if pedido.material_utilizado.stock_bajo() %}bg-danger{% else %}bg-success{% endif %}">
+                            {{ pedido.material_utilizado.cantidad_stock }} unidades
+                        </span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Confirmación de Eliminación -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-exclamation-triangle"></i> Confirmar Eliminación
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>¿Estás seguro de eliminar el pedido <strong>{{ pedido.numero_pedido }}</strong>?</p>
+                <p class="text-danger mb-0">Esta acción no se puede deshacer.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <form method="POST" action="{{ url_for('orders.delete_order', order_id=pedido.id) }}" style="display: inline;">
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-trash"></i> Eliminar
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let deleteModal;
+
+document.addEventListener('DOMContentLoaded', function() {
+    deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+});
+
+function confirmarEliminar() {
+    deleteModal.show();
+}
+</script>
+{% endblock %}

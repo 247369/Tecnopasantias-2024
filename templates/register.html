@@ -1,0 +1,238 @@
+{% extends "base.html" %}
+
+{% block title %}Registrar Usuario - PLECORMET{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('orders.dashboard') }}">Dashboard</a></li>
+            <li class="breadcrumb-item active">Registrar Usuario</li>
+        </ol>
+    </nav>
+    <h1><i class="bi bi-person-plus"></i> Registrar Nuevo Usuario</h1>
+    <p class="text-muted">Solo administradores pueden registrar nuevos usuarios</p>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Información del Usuario</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('auth.register') }}">
+                    <!-- Nombre de Usuario -->
+                    <div class="mb-3">
+                        <label for="username" class="form-label">
+                            <i class="bi bi-person"></i> Nombre de Usuario *
+                        </label>
+                        <input type="text" class="form-control" id="username" 
+                               name="username" required 
+                               placeholder="Ej: jperez"
+                               pattern="[a-zA-Z0-9_]+"
+                               title="Solo letras, números y guiones bajos">
+                        <small class="text-muted">
+                            Identificador único para iniciar sesión (sin espacios)
+                        </small>
+                    </div>
+
+                    <!-- Nombre Completo -->
+                    <div class="mb-3">
+                        <label for="nombre_completo" class="form-label">
+                            <i class="bi bi-person-badge"></i> Nombre Completo
+                        </label>
+                        <input type="text" class="form-control" id="nombre_completo" 
+                               name="nombre_completo" 
+                               placeholder="Ej: Juan Pérez">
+                        <small class="text-muted">Nombre completo del usuario (opcional)</small>
+                    </div>
+
+                    <!-- Email -->
+                    <div class="mb-3">
+                        <label for="email" class="form-label">
+                            <i class="bi bi-envelope"></i> Correo Electrónico *
+                        </label>
+                        <input type="email" class="form-control" id="email" 
+                               name="email" required 
+                               placeholder="usuario@ejemplo.com">
+                        <small class="text-muted">Email para notificaciones y recuperación</small>
+                    </div>
+
+                    <!-- Rol -->
+                    <div class="mb-3">
+                        <label for="rol" class="form-label">
+                            <i class="bi bi-shield-check"></i> Rol del Usuario *
+                        </label>
+                        <select class="form-select" id="rol" name="rol" required>
+                            <option value="empleado" selected>Empleado</option>
+                            <option value="admin">Administrador</option>
+                        </select>
+                        <small class="text-muted">
+                            <strong>Empleado:</strong> Solo ve pedidos asignados | 
+                            <strong>Admin:</strong> Acceso completo al sistema
+                        </small>
+                    </div>
+
+                    <div class="row">
+                        <!-- Contraseña -->
+                        <div class="col-md-6 mb-3">
+                            <label for="password" class="form-label">
+                                <i class="bi bi-lock"></i> Contraseña *
+                            </label>
+                            <input type="password" class="form-control" id="password" 
+                                   name="password" required 
+                                   minlength="6"
+                                   placeholder="Mínimo 6 caracteres">
+                            <small class="text-muted">Al menos 6 caracteres</small>
+                        </div>
+
+                        <!-- Confirmar Contraseña -->
+                        <div class="col-md-6 mb-3">
+                            <label for="confirm_password" class="form-label">
+                                <i class="bi bi-lock-fill"></i> Confirmar Contraseña *
+                            </label>
+                            <input type="password" class="form-control" id="confirm_password" 
+                                   name="confirm_password" required 
+                                   minlength="6"
+                                   placeholder="Repetir contraseña">
+                            <div id="passwordError" class="text-danger small mt-1" style="display: none;">
+                                Las contraseñas no coinciden
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Botones -->
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                        <button type="reset" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-counterclockwise"></i> Limpiar
+                        </button>
+                        <button type="submit" class="btn btn-primary" id="btnSubmit">
+                            <i class="bi bi-person-plus"></i> Registrar Usuario
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Usuarios Registrados Recientemente -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-people"></i> Usuarios en el Sistema</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted small">
+                    <i class="bi bi-info-circle"></i> 
+                    Aquí podrías mostrar una lista de usuarios registrados. 
+                    Esta funcionalidad requeriría una ruta adicional en el backend.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Panel de Ayuda -->
+    <div class="col-lg-4">
+        <div class="card bg-info text-white mb-3">
+            <div class="card-body">
+                <h5 class="card-title">
+                    <i class="bi bi-shield-check"></i> Roles del Sistema
+                </h5>
+                <hr class="bg-white">
+                <h6>Administrador</h6>
+                <ul class="small">
+                    <li>Crear y gestionar pedidos</li>
+                    <li>Gestionar materiales</li>
+                    <li>Ver todos los pedidos</li>
+                    <li>Asignar pedidos a empleados</li>
+                    <li>Registrar nuevos usuarios</li>
+                </ul>
+                <hr class="bg-white">
+                <h6>Empleado</h6>
+                <ul class="small">
+                    <li>Ver pedidos asignados</li>
+                    <li>Actualizar estado de pedidos</li>
+                    <li>Usar el optimizador</li>
+                    <li>Ver materiales disponibles</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="card border-warning mb-3">
+            <div class="card-header bg-warning">
+                <h6 class="mb-0">
+                    <i class="bi bi-exclamation-triangle"></i> Requisitos
+                </h6>
+            </div>
+            <div class="card-body">
+                <ul class="small mb-0">
+                    <li><strong>Usuario:</strong> Único, sin espacios</li>
+                    <li><strong>Email:</strong> Válido y único</li>
+                    <li><strong>Contraseña:</strong> Mínimo 6 caracteres</li>
+                    <li><strong>Rol:</strong> Admin o Empleado</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h6 class="mb-0">
+                    <i class="bi bi-lightbulb"></i> Consejos
+                </h6>
+            </div>
+            <div class="card-body">
+                <ul class="small mb-0">
+                    <li>Usa nombres de usuario cortos y fáciles de recordar</li>
+                    <li>Las contraseñas se almacenan encriptadas</li>
+                    <li>El usuario puede cambiar su contraseña después</li>
+                    <li>Asigna el rol "Empleado" por defecto</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Validar que las contraseñas coincidan
+const password = document.getElementById('password');
+const confirmPassword = document.getElementById('confirm_password');
+const passwordError = document.getElementById('passwordError');
+const btnSubmit = document.getElementById('btnSubmit');
+
+function validarPasswords() {
+    if (confirmPassword.value && password.value !== confirmPassword.value) {
+        passwordError.style.display = 'block';
+        confirmPassword.classList.add('is-invalid');
+        btnSubmit.disabled = true;
+    } else {
+        passwordError.style.display = 'none';
+        confirmPassword.classList.remove('is-invalid');
+        btnSubmit.disabled = false;
+    }
+}
+
+password.addEventListener('input', validarPasswords);
+confirmPassword.addEventListener('input', validarPasswords);
+
+// Validar usuario (solo letras, números y guiones bajos)
+document.getElementById('username').addEventListener('input', function() {
+    this.value = this.value.toLowerCase().replace(/[^a-z0-9_]/g, '');
+});
+
+// Confirmación antes de enviar
+document.querySelector('form').addEventListener('submit', function(e) {
+    if (password.value !== confirmPassword.value) {
+        e.preventDefault();
+        alert('Las contraseñas no coinciden');
+        return false;
+    }
+    
+    if (password.value.length < 6) {
+        e.preventDefault();
+        alert('La contraseña debe tener al menos 6 caracteres');
+        return false;
+    }
+});
+</script>
+{% endblock %}profile.html

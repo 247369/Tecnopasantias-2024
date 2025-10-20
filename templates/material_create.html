@@ -1,0 +1,220 @@
+{% extends "base.html" %}
+
+{% block title %}Agregar Material - PLECORMET{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('orders.dashboard') }}">Dashboard</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('orders.list_materials') }}">Materiales</a></li>
+            <li class="breadcrumb-item active">Nuevo Material</li>
+        </ol>
+    </nav>
+    <h1><i class="bi bi-plus-circle"></i> Agregar Nuevo Material</h1>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Información del Material</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('orders.create_material') }}">
+                    <!-- Nombre del Material -->
+                    <div class="mb-3">
+                        <label for="nombre" class="form-label">
+                            Nombre del Material *
+                        </label>
+                        <input type="text" class="form-control" id="nombre" 
+                               name="nombre" required 
+                               placeholder="Ej: Barra de Acero Redonda SAE 1020">
+                        <small class="text-muted">Nombre descriptivo del material</small>
+                    </div>
+
+                    <div class="row">
+                        <!-- Tipo -->
+                        <div class="col-md-6 mb-3">
+                            <label for="tipo" class="form-label">
+                                Tipo *
+                            </label>
+                            <select class="form-select" id="tipo" name="tipo" required>
+                                <option value="">Seleccionar tipo...</option>
+                                <option value="Redondo">Redondo</option>
+                                <option value="Cuadrado">Cuadrado</option>
+                                <option value="Rectangular">Rectangular</option>
+                                <option value="Perfil L">Perfil L</option>
+                                <option value="Perfil T">Perfil T</option>
+                                <option value="Perfil U">Perfil U</option>
+                                <option value="Tubo Redondo">Tubo Redondo</option>
+                                <option value="Tubo Cuadrado">Tubo Cuadrado</option>
+                                <option value="Tubo Rectangular">Tubo Rectangular</option>
+                                <option value="Platina">Platina</option>
+                                <option value="Otro">Otro</option>
+                            </select>
+                        </div>
+
+                        <!-- Material/Especificación -->
+                        <div class="col-md-6 mb-3">
+                            <label for="material" class="form-label">
+                                Especificación del Material
+                            </label>
+                            <input type="text" class="form-control" id="material" 
+                                   name="material" 
+                                   placeholder="Ej: Acero SAE 1020, Aluminio 6061">
+                            <small class="text-muted">Grado o especificación técnica</small>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <!-- Longitud Disponible -->
+                        <div class="col-md-6 mb-3">
+                            <label for="longitud_disponible" class="form-label">
+                                Longitud Estándar (mm) *
+                            </label>
+                            <input type="number" class="form-control" id="longitud_disponible" 
+                                   name="longitud_disponible" required 
+                                   min="1" step="0.1"
+                                   placeholder="Ej: 6000">
+                            <small class="text-muted">Longitud de cada barra/perfil</small>
+                        </div>
+
+                        <!-- Diámetro/Espesor -->
+                        <div class="col-md-6 mb-3">
+                            <label for="diametro_espesor" class="form-label">
+                                Diámetro/Espesor (mm)
+                            </label>
+                            <input type="number" class="form-control" id="diametro_espesor" 
+                                   name="diametro_espesor" 
+                                   min="0" step="0.1"
+                                   placeholder="Ej: 25.4">
+                            <small class="text-muted">Para redondos: diámetro / Para otros: espesor</small>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <!-- Stock Inicial -->
+                        <div class="col-md-4 mb-3">
+                            <label for="cantidad_stock" class="form-label">
+                                Stock Inicial
+                            </label>
+                            <input type="number" class="form-control" id="cantidad_stock" 
+                                   name="cantidad_stock" 
+                                   min="0" value="0"
+                                   placeholder="0">
+                            <small class="text-muted">Cantidad de unidades disponibles</small>
+                        </div>
+
+                        <!-- Stock Mínimo -->
+                        <div class="col-md-4 mb-3">
+                            <label for="stock_minimo" class="form-label">
+                                Stock Mínimo
+                            </label>
+                            <input type="number" class="form-control" id="stock_minimo" 
+                                   name="stock_minimo" 
+                                   min="0" value="5"
+                                   placeholder="5">
+                            <small class="text-muted">Alerta cuando el stock esté bajo</small>
+                        </div>
+
+                        <!-- Precio Unitario -->
+                        <div class="col-md-4 mb-3">
+                            <label for="precio_unitario" class="form-label">
+                                Precio Unitario ($)
+                            </label>
+                            <input type="number" class="form-control" id="precio_unitario" 
+                                   name="precio_unitario" 
+                                   min="0" step="0.01"
+                                   placeholder="0.00">
+                            <small class="text-muted">Precio por unidad (opcional)</small>
+                        </div>
+                    </div>
+
+                    <!-- Botones -->
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                        <a href="{{ url_for('orders.list_materials') }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-circle"></i> Cancelar
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-save"></i> Guardar Material
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Panel de Ayuda -->
+    <div class="col-lg-4">
+        <div class="card bg-light mb-3">
+            <div class="card-body">
+                <h5 class="card-title">
+                    <i class="bi bi-lightbulb"></i> Consejos
+                </h5>
+                <ul class="small mb-0">
+                    <li>Usa nombres descriptivos para identificar fácilmente los materiales</li>
+                    <li>La longitud estándar es la longitud de cada barra/perfil que compras</li>
+                    <li>El stock mínimo te ayudará a recibir alertas cuando debas reabastecer</li>
+                    <li>El precio es opcional y se usa para cálculos de costos</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="card border-primary">
+            <div class="card-header bg-primary text-white">
+                <h6 class="mb-0">
+                    <i class="bi bi-info-circle"></i> Campos Obligatorios
+                </h6>
+            </div>
+            <div class="card-body">
+                <ul class="small mb-0">
+                    <li>Nombre del Material</li>
+                    <li>Tipo</li>
+                    <li>Longitud Estándar</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-body">
+                <h6 class="card-title">
+                    <i class="bi bi-calculator"></i> Ejemplo
+                </h6>
+                <div class="small">
+                    <strong>Nombre:</strong> Barra de Acero Redonda SAE 1020<br>
+                    <strong>Tipo:</strong> Redondo<br>
+                    <strong>Material:</strong> Acero SAE 1020<br>
+                    <strong>Longitud:</strong> 6000 mm (6 metros)<br>
+                    <strong>Diámetro:</strong> 25.4 mm (1 pulgada)<br>
+                    <strong>Stock:</strong> 50 unidades<br>
+                    <strong>Stock Mínimo:</strong> 10 unidades<br>
+                    <strong>Precio:</strong> $1,250.00
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Vista previa del nombre mientras se escribe
+document.getElementById('nombre').addEventListener('input', function() {
+    console.log('Material:', this.value);
+});
+
+// Validación del formulario
+document.querySelector('form').addEventListener('submit', function(e) {
+    const longitud = parseFloat(document.getElementById('longitud_disponible').value);
+    
+    if (longitud <= 0) {
+        e.preventDefault();
+        alert('La longitud debe ser mayor a 0');
+        return false;
+    }
+    
+    return true;
+});
+</script>
+{% endblock %}
